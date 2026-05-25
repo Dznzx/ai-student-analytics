@@ -1,105 +1,113 @@
 import { useState } from "react"
-import { useNavigate, Link } from "react-router-dom"
 import axios from "axios"
-
-
-const API = import.meta.env.VITE_API_URL
-
+import { useNavigate, Link } from "react-router-dom"
 
 function Signup() {
 
   const navigate = useNavigate()
 
   const [formData, setFormData] = useState({
-
+    username: "",
     email: "",
     password: ""
-
   })
 
+  const [message, setMessage] = useState("")
+
+  const API = "https://ai-student-analytics.onrender.com"
 
   const handleChange = (e) => {
 
     setFormData({
-
       ...formData,
-
       [e.target.name]: e.target.value
-
     })
+
   }
 
+  const handleSubmit = async (e) => {
 
-  const handleSignup = async () => {
+    e.preventDefault()
 
     try {
 
-      await axios.post(
-
+      const response = await axios.post(
         `${API}/signup`,
-
         formData
-
       )
 
-      alert("Signup successful!")
+      setMessage(response.data.message)
 
-      navigate("/")
+      setTimeout(() => {
+        navigate("/")
+      }, 1500)
 
     } catch (error) {
 
-      alert("Signup failed")
-    }
-  }
+      console.log(error)
 
+      setMessage("Signup failed")
+
+    }
+
+  }
 
   return (
 
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
 
-      <div className="bg-white p-10 rounded-2xl shadow-xl w-[400px]">
+      <div className="bg-white p-10 rounded-2xl shadow-2xl w-[400px]">
 
-        <h1 className="text-4xl font-bold text-center mb-8 text-green-600">
-
-          AI Student Analytics
-
+        <h1 className="text-3xl font-bold text-center mb-6">
+          Create Account
         </h1>
 
+        <form onSubmit={handleSubmit}>
 
-        <h2 className="text-2xl font-semibold mb-6 text-center">
+          <input
+            type="text"
+            name="username"
+            placeholder="Username"
+            value={formData.username}
+            onChange={handleChange}
+            className="w-full p-4 border rounded-xl mb-4"
+            required
+          />
 
-          Signup
+          <input
+            type="email"
+            name="email"
+            placeholder="Email"
+            value={formData.email}
+            onChange={handleChange}
+            className="w-full p-4 border rounded-xl mb-4"
+            required
+          />
 
-        </h2>
+          <input
+            type="password"
+            name="password"
+            placeholder="Password"
+            value={formData.password}
+            onChange={handleChange}
+            className="w-full p-4 border rounded-xl mb-6"
+            required
+          />
 
+          <button
+            type="submit"
+            className="w-full bg-black text-white p-4 rounded-xl hover:bg-gray-800 transition"
+          >
+            Sign Up
+          </button>
 
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-          className="w-full p-4 border rounded-xl mb-4"
-        />
+        </form>
 
-
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
-          className="w-full p-4 border rounded-xl mb-6"
-        />
-
-
-        <button
-          onClick={handleSignup}
-          className="w-full bg-green-600 hover:bg-green-700 text-white p-4 rounded-xl text-lg font-semibold"
-        >
-          Signup
-        </button>
-
+        {message && (
+          <p className="text-center mt-4 text-red-500">
+            {message}
+          </p>
+        )}
 
         <p className="text-center mt-6">
 
@@ -107,7 +115,7 @@ function Signup() {
 
           <Link
             to="/"
-            className="text-green-600 font-semibold ml-2"
+            className="text-blue-500 ml-2"
           >
             Login
           </Link>
@@ -119,6 +127,7 @@ function Signup() {
     </div>
 
   )
+
 }
 
 export default Signup
