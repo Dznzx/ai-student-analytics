@@ -139,3 +139,68 @@ h1,h2,h3,.v-title{font-family:'Syne',sans-serif;letter-spacing:-.02em}
 
 .v-badge-risk{background:rgba(248,113,113,.14);color:#f87171;font-weight:600;padding:3px 12px;border-radius:100px;font-size:12px}
 .v-badge-safe{background:rgba(74,222,128,.14);color:#4ade80;font-weight:600;padding:3px 12px;border-radius:100px;font-size:12px}
+
+/* ---- Toasts ---- */
+.v-toast-stack{
+  position:fixed;bottom:24px;right:24px;z-index:2000;
+  display:flex;flex-direction:column;gap:10px;max-width:340px;
+}
+.v-toast{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:14px 16px;border-radius:12px;font-size:13px;font-weight:500;
+  box-shadow:0 12px 32px rgba(0,0,0,.35);backdrop-filter:blur(12px);
+  animation:v-toast-in .35s cubic-bezier(.22,1,.36,1);
+}
+.v-toast-success{background:rgba(10,20,15,.92);border:1px solid rgba(74,222,128,.35);color:#86efac}
+.v-toast-error{background:rgba(24,10,10,.92);border:1px solid rgba(248,113,113,.35);color:#fca5a5}
+.v-toast-close{
+  background:none;border:none;color:inherit;opacity:.6;cursor:pointer;font-size:12px;
+  padding:2px 4px;transition:opacity .2s;line-height:1;
+}
+.v-toast-close:hover{opacity:1}
+@keyframes v-toast-in{
+  from{opacity:0;transform:translateX(40px)}
+  to{opacity:1;transform:translateX(0)}
+}
+
+/* ---- Modal ---- */
+.v-modal-overlay{
+  position:fixed;inset:0;background:rgba(2,4,10,.65);backdrop-filter:blur(4px);
+  display:flex;align-items:center;justify-content:center;z-index:3000;padding:20px;
+  animation:v-fade-in .2s ease;
+}
+.v-modal{
+  background:var(--d-card,var(--s1));border:1px solid var(--d-border,var(--border2));border-radius:16px;
+  padding:28px;max-width:400px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.5);
+  animation:v-modal-in .25s cubic-bezier(.22,1,.36,1);color:var(--d-text,var(--white));
+}
+@keyframes v-fade-in{from{opacity:0}to{opacity:1}}
+@keyframes v-modal-in{
+  from{opacity:0;transform:scale(.94) translateY(8px)}
+  to{opacity:1;transform:scale(1) translateY(0)}
+}
+
+/* ---- Skeletons ---- */
+.v-skel{
+  position:relative;overflow:hidden;border-radius:8px;
+  background:var(--d-border,rgba(255,255,255,.06));
+}
+.v-skel::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);
+  animation:v-shimmer 1.4s infinite;
+}
+.v-skel-line{height:14px;border-radius:6px}
+.v-skel-row{height:38px;border-radius:8px;margin-bottom:10px}
+@keyframes v-shimmer{
+  from{transform:translateX(-100%)}
+  to{transform:translateX(100%)}
+}
+
+/* ---- Bulk action bar ---- */
+.v-bulk-bar{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+  background:rgba(91,127,255,.08);border:1px solid rgba(91,127,255,.25);
+  border-radius:12px;padding:12px 16px;margin-bottom:16px;
+  animation:v-fade-in .2s ease;color:var(--d-text);
+}

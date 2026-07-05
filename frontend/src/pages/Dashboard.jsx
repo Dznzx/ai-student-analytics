@@ -22,6 +22,22 @@ function Dashboard() {
   const [formData, setFormData] = useState({
     name: "", reg_no: "", department: "", attendance: "", cgpa: ""
   })
+  const [toasts, setToasts] = useState([])
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [sortField, setSortField] = useState(null)
+  const [sortDirection, setSortDirection] = useState("asc")
+
+  const addToast = (message, type = "success") => {
+    const id = Date.now() + Math.random()
+    setToasts((prev) => [...prev, { id, message, type }])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id))
+    }, 3500)
+  }
+
+  const dismissToast = (id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }
 
   useEffect(() => { fetchStudents() }, [])
 
@@ -60,8 +76,9 @@ function Dashboard() {
       }, { headers: { Authorization: `Bearer ${token}` } })
       fetchStudents()
       resetForm()
+      addToast("Student added successfully.", "success")
     } catch (err) {
-      alert("Failed to add student. Please try again.")
+      addToast("Failed to add student. Please try again.", "error")
     }
   }
 
@@ -72,8 +89,11 @@ function Dashboard() {
         headers: { Authorization: `Bearer ${token}` }
       })
       fetchStudents()
+      addToast("Student deleted.", "success")
     } catch (err) {
-      alert("Failed to delete student.")
+      addToast("Failed to delete student.", "error")
+    } finally {
+      setConfirmDelete(null)
     }
   }
 
@@ -97,8 +117,9 @@ function Dashboard() {
       fetchStudents()
       setEditingId(null)
       resetForm()
+      addToast("Student updated successfully.", "success")
     } catch (err) {
-      alert("Failed to update student.")
+      addToast("Failed to update student.", "error")
     }
   }
 
@@ -107,7 +128,7 @@ function Dashboard() {
   }
 
   const uploadCSV = async () => {
-    if (!csvFile) { alert("Please select a CSV file"); return }
+    if (!csvFile) { addToast("Please select a CSV file.", "error"); return }
     try {
       const token = localStorage.getItem("token")
       const fd = new FormData()
@@ -116,9 +137,9 @@ function Dashboard() {
         headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` }
       })
       fetchStudents()
-      alert("CSV uploaded successfully!")
+      addToast("CSV uploaded successfully!", "success")
     } catch (err) {
-      alert("CSV upload failed.")
+      addToast("CSV upload failed.", "error")
     }
   }
 
@@ -150,6 +171,31 @@ function Dashboard() {
     return "Apply for internships, research programs, hackathons, and competitive coding contests."
   }
 
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))
+    } else {
+      setSortField(field)
+      setSortDirection("asc")
+    }
+  }
+
+  const getRiskValue = (student) => (predictions[student.id]?.prediction === "HIGH RISK" ? 1 : 0)
+
+  const sortStudents = (list) => {
+    if (!sortField) return list
+    const sorted = [...list].sort((a, b) => {
+      let valA, valB
+      if (sortField === "risk") { valA = getRiskValue(a); valB = getRiskValue(b) }
+      else { valA = a[sortField]; valB = b[sortField] }
+      if (typeof valA === "string") { valA = valA.toLowerCase(); valB = valB.toLowerCase() }
+      if (valA < valB) return sortDirection === "asc" ? -1 : 1
+      if (valA > valB) return sortDirection === "asc" ? 1 : -1
+      return 0
+    })
+    return sorted
+  }
+
   const riskData = [
     { name: "High Risk", value: students.filter(s => s.cgpa < 7 || s.attendance < 75).length },
     { name: "Low Risk",  value: students.filter(s => s.cgpa >= 7 && s.attendance >= 75).length }
@@ -163,6 +209,16 @@ function Dashboard() {
 
   return (
     <div className={wrap}>
+      {/* TOASTS */}
+      <div className="v-toast-stack">
+        {toasts.map((t) => (
+          <div key={t.id} className={`v-toast ${t.type === "error" ? "v-toast-error" : "v-toast-success"}`}>
+            <span>{t.message}</span>
+            <button onClick={() => dismissToast(t.id)} className="v-toast-close">✕</button>
+          </div>
+        ))}
+      </div>
+
       {/* HEADER */}
       <div className="flex flex-wrap justify-between items-center mb-10 gap-4">
         <h1 className="text-2xl md:text-3xl font-bold v-title">
@@ -334,21 +390,38 @@ function Dashboard() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left v-dash-border-t v-dash-muted" style={{borderBottom:"1px solid var(--d-border)"}}>
-                    <th className="p-3">Name</th>
-                    <th className="p-3">Reg No</th>
-                    <th className="p-3">Dept</th>
-                    <th className="p-3">Attendance</th>
-                    <th className="p-3">CGPA</th>
-                    <th className="p-3">Risk</th>
+                    {[
+                      { key: "name", label: "Name" },
+                      { key: "reg_no", label: "Reg No" },
+                      { key: "department", label: "Dept" },
+                      { key: "attendance", label: "Attendance" },
+                      { key: "cgpa", label: "CGPA" },
+                      { key: "risk", label: "Risk" },
+                    ].map((col) => (
+                      <th
+                        key={col.key}
+                        className="p-3 select-none"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => handleSort(col.key)}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          {col.label}
+                          <span style={{ opacity: sortField === col.key ? 1 : 0.25, fontSize: "10px" }}>
+                            {sortField === col.key && sortDirection === "desc" ? "▼" : "▲"}
+                          </span>
+                        </span>
+                      </th>
+                    ))}
                     <th className="p-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {students
-                    .filter(s =>
+                  {sortStudents(
+                    students.filter(s =>
                       s.name.toLowerCase().includes(search.toLowerCase()) ||
                       s.department.toLowerCase().includes(search.toLowerCase())
                     )
+                  )
                     .map((student) => (
                       <tr key={student.id} className="v-dash-row" style={{borderBottom:"1px solid var(--d-border)"}}>
                         <td className="p-3 font-medium">{student.name}</td>
@@ -372,7 +445,7 @@ function Dashboard() {
                         <td className="p-3">
                           <div className="flex gap-2">
                             <button onClick={() => startEdit(student)} className="v-btn-warn">Edit</button>
-                            <button onClick={() => deleteStudent(student.id)} className="v-btn-danger-sm">Delete</button>
+                            <button onClick={() => setConfirmDelete(student)} className="v-btn-danger-sm">Delete</button>
                           </div>
                         </td>
                       </tr>
@@ -385,6 +458,21 @@ function Dashboard() {
             </div>
           </div>
         </>
+      )}
+      {/* CONFIRM DELETE MODAL */}
+      {confirmDelete && (
+        <div className="v-modal-overlay" onClick={() => setConfirmDelete(null)}>
+          <div className="v-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-2 v-title">Delete Student?</h3>
+            <p className="v-dash-muted text-sm mb-6">
+              This will permanently remove <span style={{color:"var(--d-text)", fontWeight:600}}>{confirmDelete.name}</span> ({confirmDelete.reg_no}) from your records. This can't be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setConfirmDelete(null)} className="v-btn-secondary">Cancel</button>
+              <button onClick={() => deleteStudent(confirmDelete.id)} className="v-btn-danger">Delete</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
