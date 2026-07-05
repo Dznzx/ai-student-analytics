@@ -29,30 +29,33 @@ function Signup() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <div className="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center mb-2">AI Student Analytics</h1>
-        <p className="text-center text-gray-500 text-sm mb-8">Create your account</p>
-        <form onSubmit={handleSubmit}>
+    <div className="v-auth-page">
+      <div className="v-auth-card">
+        <div className="v-auth-mark">AI</div>
+        <h1 className="v-auth-title v-gradient-text">AI Student Analytics</h1>
+        <p className="v-auth-sub">Create your account</p>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input type="text" name="username" placeholder="Username" value={formData.username}
-            onChange={handleChange} className="w-full p-4 border rounded-xl mb-4" required />
+            onChange={handleChange} className="v-input" required />
           <input type="email" name="email" placeholder="Email" value={formData.email}
-            onChange={handleChange} className="w-full p-4 border rounded-xl mb-4" required />
+            onChange={handleChange} className="v-input" required />
           <input type="password" name="password" placeholder="Password" value={formData.password}
-            onChange={handleChange} className="w-full p-4 border rounded-xl mb-6" required />
-          <button type="submit" disabled={loading}
-            className="w-full bg-black text-white p-4 rounded-xl hover:bg-gray-800 transition disabled:opacity-60">
+            onChange={handleChange} className="v-input" required />
+          <button type="submit" disabled={loading} className="v-btn-primary v-btn-block mt-1">
             {loading ? "Creating account..." : "Sign Up"}
           </button>
         </form>
+
         {message && (
-          <p className={`text-center mt-4 text-sm ${message.includes("success") ? "text-green-600" : "text-red-500"}`}>
+          <div className={`${message.toLowerCase().includes("success") ? "v-alert-success" : "v-alert-error"} mt-4`}>
             {message}
-          </p>
+          </div>
         )}
-        <p className="text-center mt-6 text-sm">
-          Already have an account?{" "}
-          <Link to="/" className="text-blue-500 font-semibold ml-1">Login</Link>
+
+        <p className="v-auth-foot">
+          Already have an account?
+          <Link to="/" className="v-link">Login</Link>
         </p>
       </div>
     </div>

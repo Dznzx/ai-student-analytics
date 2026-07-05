@@ -31,28 +31,31 @@ function Login() {
   const handleKeyDown = (e) => { if (e.key === "Enter") handleLogin() }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <div className="bg-white p-10 rounded-2xl shadow-xl w-full max-w-md">
-        <h1 className="text-4xl font-bold text-center mb-2 text-blue-600">AI Student Analytics</h1>
-        <p className="text-center text-gray-500 text-sm mb-8">Sign in to your dashboard</p>
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-5 text-sm">
-            {error}
-          </div>
-        )}
-        <input type="email" name="email" placeholder="Email" value={formData.email}
-          onChange={handleChange} onKeyDown={handleKeyDown}
-          className="w-full p-4 border rounded-xl mb-4 focus:outline-none focus:border-blue-400" />
-        <input type="password" name="password" placeholder="Password" value={formData.password}
-          onChange={handleChange} onKeyDown={handleKeyDown}
-          className="w-full p-4 border rounded-xl mb-6 focus:outline-none focus:border-blue-400" />
-        <button onClick={handleLogin} disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-xl text-lg font-semibold disabled:opacity-60 transition">
-          {loading ? "Signing in..." : "Login"}
-        </button>
-        <p className="text-center mt-6 text-sm">
-          Don't have an account?{" "}
-          <Link to="/signup" className="text-blue-600 font-semibold ml-1">Sign up</Link>
+    <div className="v-auth-page">
+      <div className="v-auth-card">
+        <div className="v-auth-mark">AI</div>
+        <h1 className="v-auth-title v-gradient-text">AI Student Analytics</h1>
+        <p className="v-auth-sub">Sign in to your dashboard</p>
+
+        {error && <div className="v-alert-error mb-4">{error}</div>}
+
+        <div className="flex flex-col gap-4">
+          <input
+            type="email" name="email" placeholder="Email" value={formData.email}
+            onChange={handleChange} onKeyDown={handleKeyDown} className="v-input"
+          />
+          <input
+            type="password" name="password" placeholder="Password" value={formData.password}
+            onChange={handleChange} onKeyDown={handleKeyDown} className="v-input"
+          />
+          <button onClick={handleLogin} disabled={loading} className="v-btn-primary v-btn-block mt-1">
+            {loading ? "Signing in..." : "Login"}
+          </button>
+        </div>
+
+        <p className="v-auth-foot">
+          Don't have an account?
+          <Link to="/signup" className="v-link">Sign up</Link>
         </p>
       </div>
     </div>

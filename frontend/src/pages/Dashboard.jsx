@@ -13,7 +13,7 @@ function Dashboard() {
   const navigate = useNavigate()
   const [students, setStudents] = useState([])
   const [search, setSearch] = useState("")
-  const [darkMode, setDarkMode] = useState(false)
+  const [darkMode, setDarkMode] = useState(true)
   const [editingId, setEditingId] = useState(null)
   const [csvFile, setCsvFile] = useState(null)
   const [predictions, setPredictions] = useState({})
@@ -154,36 +154,38 @@ function Dashboard() {
     { name: "High Risk", value: students.filter(s => s.cgpa < 7 || s.attendance < 75).length },
     { name: "Low Risk",  value: students.filter(s => s.cgpa >= 7 && s.attendance >= 75).length }
   ]
-  const COLORS = ["#ef4444", "#22c55e"]
+  const COLORS = ["#f87171", "#4ade80"]
 
   const logout = () => { localStorage.removeItem("token"); navigate("/") }
 
-  const bg = darkMode ? "min-h-screen bg-gray-900 text-white p-6 md:p-10" : "min-h-screen bg-gray-100 p-6 md:p-10"
-  const card = "bg-white text-black p-6 rounded-2xl shadow mb-8"
+  const wrap = `v-dashboard ${darkMode ? "" : "light"} p-6 md:p-10`
+  const card = "v-dash-card mb-8"
 
   return (
-    <div className={bg}>
+    <div className={wrap}>
       {/* HEADER */}
       <div className="flex flex-wrap justify-between items-center mb-10 gap-4">
-        <h1 className="text-3xl font-bold">AI Student Analytics Dashboard</h1>
+        <h1 className="text-2xl md:text-3xl font-bold v-title">
+          AI Student Analytics <span className="v-gradient-text">Dashboard</span>
+        </h1>
         <div className="flex flex-wrap gap-3">
-          <button onClick={exportCSV} className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg text-sm">Export CSV</button>
-          <button onClick={() => setDarkMode(!darkMode)} className="bg-gray-800 text-white px-5 py-2.5 rounded-lg text-sm">{darkMode ? "Light Mode" : "Dark Mode"}</button>
-          <button onClick={logout} className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg text-sm">Logout</button>
+          <button onClick={exportCSV} className="v-btn-success">Export CSV</button>
+          <button onClick={() => setDarkMode(!darkMode)} className="v-btn-secondary">{darkMode ? "Light Mode" : "Dark Mode"}</button>
+          <button onClick={logout} className="v-btn-danger">Logout</button>
         </div>
       </div>
 
       {/* ERROR BANNER */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl mb-6 flex justify-between items-center">
+        <div className="v-alert-error mb-6 flex justify-between items-center flex-wrap gap-3">
           <span>{error}</span>
-          <button onClick={fetchStudents} className="bg-red-600 text-white px-4 py-1.5 rounded-lg text-sm">Retry</button>
+          <button onClick={fetchStudents} className="v-btn-danger-sm">Retry</button>
         </div>
       )}
 
       {/* ADD/EDIT STUDENT */}
       <div className={card}>
-        <h2 className="text-xl font-bold mb-5">{editingId ? "Edit Student" : "Add Student"}</h2>
+        <h2 className="text-xl font-bold mb-5 v-title">{editingId ? "Edit Student" : "Add Student"}</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {["name","reg_no","department","attendance","cgpa"].map((field) => (
             <input
@@ -193,55 +195,55 @@ function Dashboard() {
               placeholder={field.replace("_"," ").replace(/\b\w/g,c=>c.toUpperCase())}
               value={formData[field]}
               onChange={handleChange}
-              className="p-3 border rounded-lg text-sm"
+              className="v-dash-input"
             />
           ))}
         </div>
         {editingId ? (
           <div className="flex gap-3 mt-5">
-            <button onClick={updateStudent} className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg">Update</button>
-            <button onClick={() => { setEditingId(null); resetForm() }} className="bg-gray-400 hover:bg-gray-500 text-white px-5 py-2.5 rounded-lg">Cancel</button>
+            <button onClick={updateStudent} className="v-btn-success">Update</button>
+            <button onClick={() => { setEditingId(null); resetForm() }} className="v-btn-secondary">Cancel</button>
           </div>
         ) : (
-          <button onClick={addStudent} className="mt-5 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg">Add Student</button>
+          <button onClick={addStudent} className="v-btn-primary mt-5">Add Student</button>
         )}
       </div>
 
       {/* CSV UPLOAD */}
       <div className={card}>
-        <h2 className="text-xl font-bold mb-4">Upload Student CSV</h2>
-        <p className="text-sm text-gray-500 mb-4">CSV columns: name, reg_no, department, attendance, cgpa</p>
+        <h2 className="text-xl font-bold mb-4 v-title">Upload Student CSV</h2>
+        <p className="text-sm v-dash-muted mb-4">CSV columns: name, reg_no, department, attendance, cgpa</p>
         <div className="flex gap-4 items-center flex-wrap">
-          <input type="file" accept=".csv" onChange={(e) => setCsvFile(e.target.files[0])} className="text-sm" />
-          <button onClick={uploadCSV} className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-lg">Upload CSV</button>
+          <input type="file" accept=".csv" onChange={(e) => setCsvFile(e.target.files[0])} className="text-sm v-dash-muted" />
+          <button onClick={uploadCSV} className="v-btn-purple">Upload CSV</button>
         </div>
       </div>
 
       {/* ANALYTICS CARDS */}
       {loading ? (
-        <div className="text-center py-16 text-gray-500">Loading students — backend may be waking up (30s)...</div>
+        <div className="text-center py-16 v-dash-muted">Loading students — backend may be waking up (30s)...</div>
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className={card.replace("mb-8","")+" text-center"}>
-              <p className="text-sm text-gray-500">Total Students</p>
-              <p className="text-4xl font-bold text-blue-600 mt-2">{students.length}</p>
+            <div className="v-dash-card text-center">
+              <p className="text-sm v-dash-muted">Total Students</p>
+              <p className="text-4xl font-bold mt-2" style={{color:"var(--blue)"}}>{students.length}</p>
             </div>
-            <div className={card.replace("mb-8","")+" text-center"}>
-              <p className="text-sm text-gray-500">Average CGPA</p>
-              <p className="text-4xl font-bold text-green-600 mt-2">
+            <div className="v-dash-card text-center">
+              <p className="text-sm v-dash-muted">Average CGPA</p>
+              <p className="text-4xl font-bold mt-2" style={{color:"var(--green)"}}>
                 {students.length > 0 ? (students.reduce((a,s)=>a+s.cgpa,0)/students.length).toFixed(2) : 0}
               </p>
             </div>
-            <div className={card.replace("mb-8","")+" text-center"}>
-              <p className="text-sm text-gray-500">Avg Attendance</p>
-              <p className="text-4xl font-bold text-purple-600 mt-2">
+            <div className="v-dash-card text-center">
+              <p className="text-sm v-dash-muted">Avg Attendance</p>
+              <p className="text-4xl font-bold mt-2" style={{color:"var(--purple)"}}>
                 {students.length > 0 ? (students.reduce((a,s)=>a+s.attendance,0)/students.length).toFixed(1) : 0}%
               </p>
             </div>
-            <div className={card.replace("mb-8","")+" text-center"}>
-              <p className="text-sm text-gray-500">High Risk</p>
-              <p className="text-4xl font-bold text-red-600 mt-2">
+            <div className="v-dash-card text-center">
+              <p className="text-sm v-dash-muted">High Risk</p>
+              <p className="text-4xl font-bold mt-2" style={{color:"var(--red)"}}>
                 {students.filter(s=>s.cgpa<7||s.attendance<75).length}
               </p>
             </div>
@@ -250,44 +252,45 @@ function Dashboard() {
           {/* TOP / AT-RISK */}
           {students.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              <div className={card.replace("mb-8","")}>
-                <h2 className="text-lg font-bold mb-3">🏆 Top Performer</h2>
-                <p className="text-xl font-semibold text-green-600">
+              <div className="v-dash-card">
+                <h2 className="text-lg font-bold mb-3 v-title">🏆 Top Performer</h2>
+                <p className="text-xl font-semibold" style={{color:"var(--green)"}}>
                   {students.reduce((p,c)=>p.cgpa>c.cgpa?p:c).name}
                 </p>
-                <p className="text-sm text-gray-500 mt-1">CGPA: {students.reduce((p,c)=>p.cgpa>c.cgpa?p:c).cgpa}</p>
+                <p className="text-sm v-dash-muted mt-1">CGPA: {students.reduce((p,c)=>p.cgpa>c.cgpa?p:c).cgpa}</p>
               </div>
-              <div className={card.replace("mb-8","")}>
-                <h2 className="text-lg font-bold mb-3">⚠️ Most At-Risk</h2>
-                <p className="text-xl font-semibold text-red-600">
+              <div className="v-dash-card">
+                <h2 className="text-lg font-bold mb-3 v-title">⚠️ Most At-Risk</h2>
+                <p className="text-xl font-semibold" style={{color:"var(--red)"}}>
                   {students.reduce((p,c)=>p.attendance<c.attendance?p:c).name}
                 </p>
-                <p className="text-sm text-gray-500 mt-1">Attendance: {students.reduce((p,c)=>p.attendance<c.attendance?p:c).attendance}%</p>
+                <p className="text-sm v-dash-muted mt-1">Attendance: {students.reduce((p,c)=>p.attendance<c.attendance?p:c).attendance}%</p>
               </div>
             </div>
           )}
 
           {/* CHARTS */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            <div className={card.replace("mb-8","")}>
-              <h2 className="text-lg font-bold mb-4">CGPA Distribution</h2>
+            <div className="v-dash-card">
+              <h2 className="text-lg font-bold mb-4 v-title">CGPA Distribution</h2>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={students}>
-                  <XAxis dataKey="name" tick={{fontSize:11}} />
-                  <YAxis domain={[0,10]} />
-                  <Tooltip />
-                  <Bar dataKey="cgpa" fill="#2563eb" radius={[4,4,0,0]} />
+                  <XAxis dataKey="name" tick={{fontSize:11, fill:"#7a82a0"}} />
+                  <YAxis domain={[0,10]} tick={{fill:"#7a82a0"}} />
+                  <Tooltip contentStyle={{background:"#080c18",border:"1px solid rgba(255,255,255,.12)",borderRadius:10,color:"#eef0f8"}} />
+                  <Bar dataKey="cgpa" fill="#5b7fff" radius={[4,4,0,0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className={card.replace("mb-8","")}>
-              <h2 className="text-lg font-bold mb-4">Risk Distribution</h2>
+            <div className="v-dash-card">
+              <h2 className="text-lg font-bold mb-4 v-title">Risk Distribution</h2>
               <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
                   <Pie data={riskData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label>
                     {riskData.map((_,i)=>(<Cell key={i} fill={COLORS[i%COLORS.length]}/>))}
                   </Pie>
-                  <Tooltip /><Legend />
+                  <Tooltip contentStyle={{background:"#080c18",border:"1px solid rgba(255,255,255,.12)",borderRadius:10,color:"#eef0f8"}} />
+                  <Legend />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -296,25 +299,21 @@ function Dashboard() {
           {/* AI INSIGHTS */}
           {students.length > 0 && (
             <div className={card}>
-              <h2 className="text-lg font-bold mb-4">🤖 AI Insights & Recommendations</h2>
+              <h2 className="text-lg font-bold mb-4 v-title">🤖 AI Insights & Recommendations</h2>
               <div className="space-y-3">
                 {students.map((student) => (
-                  <div key={student.id} className="border rounded-xl p-4">
+                  <div key={student.id} className="v-dash-border-t rounded-xl p-4" style={{border:"1px solid var(--d-border)"}}>
                     <div className="flex justify-between items-start flex-wrap gap-2">
                       <div>
                         <p className="font-semibold">{student.name}</p>
-                        <p className="text-sm text-gray-500">{student.department} · CGPA: {student.cgpa} · Attendance: {student.attendance}%</p>
+                        <p className="text-sm v-dash-muted">{student.department} · CGPA: {student.cgpa} · Attendance: {student.attendance}%</p>
                       </div>
-                      <span className={`text-sm font-semibold px-3 py-1 rounded-full ${
-                        predictions[student.id]?.prediction === "HIGH RISK"
-                          ? "bg-red-100 text-red-600"
-                          : "bg-green-100 text-green-600"
-                      }`}>
+                      <span className={predictions[student.id]?.prediction === "HIGH RISK" ? "v-badge-risk" : "v-badge-safe"}>
                         {predictions[student.id]?.prediction || "Predicting..."}
                         {predictions[student.id] && ` · ${predictions[student.id].risk_probability}%`}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600 mt-2">{getRecommendation(student)}</p>
+                    <p className="text-sm v-dash-muted mt-2">{getRecommendation(student)}</p>
                   </div>
                 ))}
               </div>
@@ -323,18 +322,18 @@ function Dashboard() {
 
           {/* SEARCH + TABLE */}
           <div className={card}>
-            <h2 className="text-lg font-bold mb-4">Students</h2>
+            <h2 className="text-lg font-bold mb-4 v-title">Students</h2>
             <input
               type="text"
               placeholder="Search by name or department..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full p-3 border rounded-xl mb-5 text-sm"
+              className="v-dash-input mb-5"
             />
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left border-b bg-gray-50">
+                  <tr className="text-left v-dash-border-t v-dash-muted" style={{borderBottom:"1px solid var(--d-border)"}}>
                     <th className="p-3">Name</th>
                     <th className="p-3">Reg No</th>
                     <th className="p-3">Dept</th>
@@ -351,33 +350,29 @@ function Dashboard() {
                       s.department.toLowerCase().includes(search.toLowerCase())
                     )
                     .map((student) => (
-                      <tr key={student.id} className="border-b hover:bg-gray-50">
+                      <tr key={student.id} className="v-dash-row" style={{borderBottom:"1px solid var(--d-border)"}}>
                         <td className="p-3 font-medium">{student.name}</td>
-                        <td className="p-3 text-gray-500">{student.reg_no}</td>
-                        <td className="p-3 text-gray-500">{student.department}</td>
+                        <td className="p-3 v-dash-muted">{student.reg_no}</td>
+                        <td className="p-3 v-dash-muted">{student.department}</td>
                         <td className="p-3">
-                          <span className={student.attendance < 75 ? "text-red-600 font-semibold" : "text-green-600"}>
+                          <span style={{color: student.attendance < 75 ? "var(--red)" : "var(--green)", fontWeight: student.attendance < 75 ? 600 : 400}}>
                             {student.attendance}%
                           </span>
                         </td>
                         <td className="p-3">
-                          <span className={student.cgpa < 7 ? "text-red-600 font-semibold" : "text-green-600"}>
+                          <span style={{color: student.cgpa < 7 ? "var(--red)" : "var(--green)", fontWeight: student.cgpa < 7 ? 600 : 400}}>
                             {student.cgpa}
                           </span>
                         </td>
                         <td className="p-3">
-                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                            predictions[student.id]?.prediction === "HIGH RISK"
-                              ? "bg-red-100 text-red-600"
-                              : "bg-green-100 text-green-600"
-                          }`}>
+                          <span className={predictions[student.id]?.prediction === "HIGH RISK" ? "v-badge-risk" : "v-badge-safe"}>
                             {predictions[student.id]?.prediction || "..."}
                           </span>
                         </td>
                         <td className="p-3">
                           <div className="flex gap-2">
-                            <button onClick={() => startEdit(student)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg text-xs">Edit</button>
-                            <button onClick={() => deleteStudent(student.id)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs">Delete</button>
+                            <button onClick={() => startEdit(student)} className="v-btn-warn">Edit</button>
+                            <button onClick={() => deleteStudent(student.id)} className="v-btn-danger-sm">Delete</button>
                           </div>
                         </td>
                       </tr>
@@ -385,7 +380,7 @@ function Dashboard() {
                 </tbody>
               </table>
               {students.length === 0 && !loading && (
-                <p className="text-center text-gray-400 py-8">No students yet. Add one above or upload a CSV.</p>
+                <p className="text-center v-dash-muted py-8">No students yet. Add one above or upload a CSV.</p>
               )}
             </div>
           </div>
