@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import axios from "axios"
 import { saveAs } from "file-saver"
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from "recharts"
-
-const API = import.meta.env.VITE_API_URL || "https://ai-student-analytics.onrender.com"
+import api from "../api"
 
 function Dashboard() {
   const navigate = useNavigate()
@@ -26,6 +24,17 @@ function Dashboard() {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [sortField, setSortField] = useState(null)
   const [sortDirection, setSortDirection] = useState("asc")
+  const [departmentFilter, setDepartmentFilter] = useState("All")
+  const [selectedIds, setSelectedIds] = useState([])
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const [selectedStudent, setSelectedStudent] = useState(null)
+  const [whatIfActive, setWhatIfActive] = useState(false)
+  const [whatIfValues, setWhatIfValues] = useState({ attendance: 0, cgpa: 0 })
+  const [whatIfResult, setWhatIfResult] = useState(null)
+  const [whatIfLoading, setWhatIfLoading] = useState(false)
+  const [studentHistory, setStudentHistory] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [alertsSending, setAlertsSending] = useState(false)
 
   const addToast = (message, type = "success") => {
     const id = Date.now() + Math.random()
@@ -39,6 +48,49 @@ function Dashboard() {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }
 
+  // Reset the what-if simulator and fetch trend history whenever a
+  // different student's detail modal is opened.
+  useEffect(() => {
+    if (selectedStudent) {
+      setWhatIfValues({ attendance: selectedStudent.attendance, cgpa: selectedStudent.cgpa })
+      setWhatIfActive(false)
+      setWhatIfResult(null)
+      fetchHistory(selectedStudent.id)
+    } else {
+      setStudentHistory([])
+    }
+  }, [selectedStudent])
+
+  const fetchHistory = async (studentId) => {
+    setHistoryLoading(true)
+    try {
+      const response = await api.get(`/students/${studentId}/history`)
+      setStudentHistory(response.data)
+    } catch (err) {
+      setStudentHistory([])
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!whatIfActive || !selectedStudent) return
+    setWhatIfLoading(true)
+    const timeout = setTimeout(async () => {
+      try {
+        const response = await api.post("/predict", {
+          attendance: whatIfValues.attendance, cgpa: whatIfValues.cgpa
+        })
+        setWhatIfResult(response.data)
+      } catch (err) {
+        setWhatIfResult(null)
+      } finally {
+        setWhatIfLoading(false)
+      }
+    }, 350)
+    return () => clearTimeout(timeout)
+  }, [whatIfValues, whatIfActive, selectedStudent])
+
   useEffect(() => { fetchStudents() }, [])
 
   useEffect(() => {
@@ -49,10 +101,7 @@ function Dashboard() {
     try {
       setLoading(true)
       setError(null)
-      const token = localStorage.getItem("token")
-      const response = await axios.get(`${API}/students`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const response = await api.get("/students")
       setStudents(response.data)
     } catch (err) {
       setError("Failed to fetch students. Backend may be starting up — try again in 30 seconds.")
@@ -68,12 +117,11 @@ function Dashboard() {
 
   const addStudent = async () => {
     try {
-      const token = localStorage.getItem("token")
-      await axios.post(`${API}/students`, {
+      await api.post("/students", {
         ...formData,
         attendance: parseFloat(formData.attendance),
         cgpa: parseFloat(formData.cgpa)
-      }, { headers: { Authorization: `Bearer ${token}` } })
+      })
       fetchStudents()
       resetForm()
       addToast("Student added successfully.", "success")
@@ -82,16 +130,53 @@ function Dashboard() {
     }
   }
 
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
+  }
+
+  const toggleSelectAll = (visibleList) => {
+    const visibleIds = visibleList.map((s) => s.id)
+    const allSelected = visibleIds.every((id) => selectedIds.includes(id))
+    if (allSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !visibleIds.includes(id)))
+    } else {
+      setSelectedIds((prev) => [...new Set([...prev, ...visibleIds])])
+    }
+  }
+
+  const bulkDelete = async () => {
+    try {
+      await Promise.all(selectedIds.map((id) => api.delete(`/students/${id}`)))
+      addToast(`Deleted ${selectedIds.length} student${selectedIds.length > 1 ? "s" : ""}.`, "success")
+      setSelectedIds([])
+      fetchStudents()
+    } catch (err) {
+      if (err.response?.status === 403) {
+        addToast("Admin access required to delete students.", "error")
+      } else {
+        addToast("Some students could not be deleted.", "error")
+      }
+    } finally {
+      setConfirmBulkDelete(false)
+    }
+  }
+
+  const bulkExport = () => {
+    const selected = students.filter((s) => selectedIds.includes(s.id))
+    exportCSV(selected, "selected_students.csv")
+  }
+
   const deleteStudent = async (id) => {
     try {
-      const token = localStorage.getItem("token")
-      await axios.delete(`${API}/students/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      await api.delete(`/students/${id}`)
       fetchStudents()
       addToast("Student deleted.", "success")
     } catch (err) {
-      addToast("Failed to delete student.", "error")
+      if (err.response?.status === 403) {
+        addToast("Admin access required to delete students.", "error")
+      } else {
+        addToast("Failed to delete student.", "error")
+      }
     } finally {
       setConfirmDelete(null)
     }
@@ -108,12 +193,11 @@ function Dashboard() {
 
   const updateStudent = async () => {
     try {
-      const token = localStorage.getItem("token")
-      await axios.put(`${API}/students/${editingId}`, {
+      await api.put(`/students/${editingId}`, {
         ...formData,
         attendance: parseFloat(formData.attendance),
         cgpa: parseFloat(formData.cgpa)
-      }, { headers: { Authorization: `Bearer ${token}` } })
+      })
       fetchStudents()
       setEditingId(null)
       resetForm()
@@ -130,11 +214,10 @@ function Dashboard() {
   const uploadCSV = async () => {
     if (!csvFile) { addToast("Please select a CSV file.", "error"); return }
     try {
-      const token = localStorage.getItem("token")
       const fd = new FormData()
       fd.append("file", csvFile)
-      await axios.post(`${API}/upload-csv`, fd, {
-        headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` }
+      await api.post("/upload-csv", fd, {
+        headers: { "Content-Type": "multipart/form-data" }
       })
       fetchStudents()
       addToast("CSV uploaded successfully!", "success")
@@ -143,18 +226,18 @@ function Dashboard() {
     }
   }
 
-  const exportCSV = () => {
+  const exportCSV = (list = students, filename = "students_report.csv") => {
     const headers = ["Name", "Register No", "Department", "Attendance", "CGPA"]
-    const rows = students.map((s) => [s.name, s.reg_no, s.department, s.attendance, s.cgpa])
+    const rows = list.map((s) => [s.name, s.reg_no, s.department, s.attendance, s.cgpa])
     let csv = headers.join(",") + "\n"
     rows.forEach((row) => { csv += row.join(",") + "\n" })
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
-    saveAs(blob, "students_report.csv")
+    saveAs(blob, filename)
   }
 
   const predictRisk = async (student) => {
     try {
-      const response = await axios.post(`${API}/predict`, {
+      const response = await api.post("/predict", {
         attendance: student.attendance, cgpa: student.cgpa
       })
       setPredictions((prev) => ({ ...prev, [student.id]: response.data }))
@@ -169,6 +252,18 @@ function Dashboard() {
     if (student.cgpa >= 7 && student.cgpa < 8.5)
       return "Focus on coding practice, mock tests, and project development."
     return "Apply for internships, research programs, hackathons, and competitive coding contests."
+  }
+
+  const sendRiskAlerts = async () => {
+    setAlertsSending(true)
+    try {
+      const response = await api.post("/alerts/send-high-risk")
+      addToast(response.data.message, "success")
+    } catch (err) {
+      addToast(err.response?.data?.detail || "Failed to send risk alerts.", "error")
+    } finally {
+      setAlertsSending(false)
+    }
   }
 
   const handleSort = (field) => {
@@ -196,6 +291,16 @@ function Dashboard() {
     return sorted
   }
 
+  const departments = ["All", ...new Set(students.map((s) => s.department).filter(Boolean))]
+
+  const departmentStats = [...new Set(students.map((s) => s.department).filter(Boolean))].map((dept) => {
+    const deptStudents = students.filter((s) => s.department === dept)
+    const avgCgpa = deptStudents.reduce((a, s) => a + s.cgpa, 0) / deptStudents.length
+    const avgAttendance = deptStudents.reduce((a, s) => a + s.attendance, 0) / deptStudents.length
+    const highRisk = deptStudents.filter((s) => s.cgpa < 7 || s.attendance < 75).length
+    return { department: dept, avgCgpa: +avgCgpa.toFixed(2), avgAttendance: +avgAttendance.toFixed(1), highRisk }
+  })
+
   const riskData = [
     { name: "High Risk", value: students.filter(s => s.cgpa < 7 || s.attendance < 75).length },
     { name: "Low Risk",  value: students.filter(s => s.cgpa >= 7 && s.attendance >= 75).length }
@@ -204,8 +309,23 @@ function Dashboard() {
 
   const logout = () => { localStorage.removeItem("token"); navigate("/") }
 
+  const visibleStudents = sortStudents(
+    students
+      .filter(s => departmentFilter === "All" || s.department === departmentFilter)
+      .filter(s =>
+        s.name.toLowerCase().includes(search.toLowerCase()) ||
+        s.department.toLowerCase().includes(search.toLowerCase())
+      )
+  )
+
   const wrap = `v-dashboard ${darkMode ? "" : "light"} p-6 md:p-10`
   const card = "v-dash-card mb-8"
+
+  const historyChartData = studentHistory.map((h) => ({
+    date: new Date(h.recorded_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+    attendance: h.attendance,
+    cgpa: h.cgpa
+  }))
 
   return (
     <div className={wrap}>
@@ -225,6 +345,9 @@ function Dashboard() {
           AI Student Analytics <span className="v-gradient-text">Dashboard</span>
         </h1>
         <div className="flex flex-wrap gap-3">
+          <button onClick={sendRiskAlerts} disabled={alertsSending} className="v-btn-purple">
+            {alertsSending ? "Sending..." : "📧 Send Risk Alerts"}
+          </button>
           <button onClick={exportCSV} className="v-btn-success">Export CSV</button>
           <button onClick={() => setDarkMode(!darkMode)} className="v-btn-secondary">{darkMode ? "Light Mode" : "Dark Mode"}</button>
           <button onClick={logout} className="v-btn-danger">Logout</button>
@@ -277,7 +400,37 @@ function Dashboard() {
 
       {/* ANALYTICS CARDS */}
       {loading ? (
-        <div className="text-center py-16 v-dash-muted">Loading students — backend may be waking up (30s)...</div>
+        <div>
+          <p className="text-center v-dash-muted text-sm mb-6">Loading students — backend may be waking up (30s)...</p>
+
+          {/* stat card skeletons */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {[1,2,3,4].map((i) => (
+              <div key={i} className="v-dash-card">
+                <div className="v-skel v-skel-line" style={{width:"60%", margin:"0 auto"}} />
+                <div className="v-skel v-skel-line" style={{width:"40%", height:"28px", margin:"14px auto 0"}} />
+              </div>
+            ))}
+          </div>
+
+          {/* chart skeletons */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {[1,2].map((i) => (
+              <div key={i} className="v-dash-card">
+                <div className="v-skel v-skel-line" style={{width:"45%", marginBottom:"18px"}} />
+                <div className="v-skel" style={{height:"220px", borderRadius:"12px"}} />
+              </div>
+            ))}
+          </div>
+
+          {/* table skeleton */}
+          <div className="v-dash-card">
+            <div className="v-skel v-skel-line" style={{width:"30%", marginBottom:"18px"}} />
+            {[1,2,3,4,5].map((i) => (
+              <div key={i} className="v-skel v-skel-row" />
+            ))}
+          </div>
+        </div>
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -352,6 +505,34 @@ function Dashboard() {
             </div>
           </div>
 
+          {/* DEPARTMENT OVERVIEW */}
+          {departmentStats.length > 1 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <div className="v-dash-card">
+                <h2 className="text-lg font-bold mb-4 v-title">Avg CGPA by Department</h2>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={departmentStats}>
+                    <XAxis dataKey="department" tick={{fontSize:11, fill:"#7a82a0"}} />
+                    <YAxis domain={[0,10]} tick={{fill:"#7a82a0"}} />
+                    <Tooltip contentStyle={{background:"#080c18",border:"1px solid rgba(255,255,255,.12)",borderRadius:10,color:"#eef0f8"}} />
+                    <Bar dataKey="avgCgpa" fill="#8b5cf6" radius={[4,4,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="v-dash-card">
+                <h2 className="text-lg font-bold mb-4 v-title">Avg Attendance by Department</h2>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={departmentStats}>
+                    <XAxis dataKey="department" tick={{fontSize:11, fill:"#7a82a0"}} />
+                    <YAxis domain={[0,100]} tick={{fill:"#7a82a0"}} />
+                    <Tooltip contentStyle={{background:"#080c18",border:"1px solid rgba(255,255,255,.12)",borderRadius:10,color:"#eef0f8"}} />
+                    <Bar dataKey="avgAttendance" fill="#22d3ee" radius={[4,4,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
           {/* AI INSIGHTS */}
           {students.length > 0 && (
             <div className={card}>
@@ -370,6 +551,11 @@ function Dashboard() {
                       </span>
                     </div>
                     <p className="text-sm v-dash-muted mt-2">{getRecommendation(student)}</p>
+                    {predictions[student.id]?.explanation?.message && (
+                      <p className="text-xs mt-2" style={{color:"var(--cyan)"}}>
+                        🔍 {predictions[student.id].explanation.message}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -379,17 +565,47 @@ function Dashboard() {
           {/* SEARCH + TABLE */}
           <div className={card}>
             <h2 className="text-lg font-bold mb-4 v-title">Students</h2>
-            <input
-              type="text"
-              placeholder="Search by name or department..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="v-dash-input mb-5"
-            />
+            <div className="flex flex-col md:flex-row gap-3 mb-5">
+              <input
+                type="text"
+                placeholder="Search by name or department..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="v-dash-input flex-1"
+              />
+              <select
+                value={departmentFilter}
+                onChange={(e) => setDepartmentFilter(e.target.value)}
+                className="v-dash-input md:w-52"
+              >
+                {departments.map((d) => (
+                  <option key={d} value={d}>{d === "All" ? "All Departments" : d}</option>
+                ))}
+              </select>
+            </div>
+
+            {selectedIds.length > 0 && (
+              <div className="v-bulk-bar">
+                <span className="text-sm">{selectedIds.length} selected</span>
+                <div className="flex gap-2">
+                  <button onClick={bulkExport} className="v-btn-success">Export Selected</button>
+                  <button onClick={() => setConfirmBulkDelete(true)} className="v-btn-danger">Delete Selected</button>
+                  <button onClick={() => setSelectedIds([])} className="v-btn-secondary">Clear</button>
+                </div>
+              </div>
+            )}
+
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left v-dash-border-t v-dash-muted" style={{borderBottom:"1px solid var(--d-border)"}}>
+                    <th className="p-3">
+                      <input
+                        type="checkbox"
+                        checked={visibleStudents.length > 0 && visibleStudents.every((s) => selectedIds.includes(s.id))}
+                        onChange={() => toggleSelectAll(visibleStudents)}
+                      />
+                    </th>
                     {[
                       { key: "name", label: "Name" },
                       { key: "reg_no", label: "Reg No" },
@@ -416,14 +632,21 @@ function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortStudents(
-                    students.filter(s =>
-                      s.name.toLowerCase().includes(search.toLowerCase()) ||
-                      s.department.toLowerCase().includes(search.toLowerCase())
-                    )
-                  )
+                  {visibleStudents
                     .map((student) => (
-                      <tr key={student.id} className="v-dash-row" style={{borderBottom:"1px solid var(--d-border)"}}>
+                      <tr
+                        key={student.id}
+                        className="v-dash-row"
+                        style={{borderBottom:"1px solid var(--d-border)", cursor:"pointer"}}
+                        onClick={() => setSelectedStudent(student)}
+                      >
+                        <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(student.id)}
+                            onChange={() => toggleSelect(student.id)}
+                          />
+                        </td>
                         <td className="p-3 font-medium">{student.name}</td>
                         <td className="p-3 v-dash-muted">{student.reg_no}</td>
                         <td className="p-3 v-dash-muted">{student.department}</td>
@@ -442,7 +665,7 @@ function Dashboard() {
                             {predictions[student.id]?.prediction || "..."}
                           </span>
                         </td>
-                        <td className="p-3">
+                        <td className="p-3" onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-2">
                             <button onClick={() => startEdit(student)} className="v-btn-warn">Edit</button>
                             <button onClick={() => setConfirmDelete(student)} className="v-btn-danger-sm">Delete</button>
@@ -470,6 +693,165 @@ function Dashboard() {
             <div className="flex gap-3 justify-end">
               <button onClick={() => setConfirmDelete(null)} className="v-btn-secondary">Cancel</button>
               <button onClick={() => deleteStudent(confirmDelete.id)} className="v-btn-danger">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM BULK DELETE MODAL */}
+      {confirmBulkDelete && (
+        <div className="v-modal-overlay" onClick={() => setConfirmBulkDelete(false)}>
+          <div className="v-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-2 v-title">Delete {selectedIds.length} Students?</h3>
+            <p className="v-dash-muted text-sm mb-6">
+              This will permanently remove <span style={{color:"var(--d-text)", fontWeight:600}}>{selectedIds.length}</span> selected student record{selectedIds.length > 1 ? "s" : ""}. This can't be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setConfirmBulkDelete(false)} className="v-btn-secondary">Cancel</button>
+              <button onClick={bulkDelete} className="v-btn-danger">Delete All</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STUDENT DETAIL MODAL */}
+      {selectedStudent && (
+        <div className="v-modal-overlay" onClick={() => setSelectedStudent(null)}>
+          <div className="v-modal" style={{maxWidth:"480px"}} onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-start mb-1">
+              <h3 className="text-xl font-bold v-title">{selectedStudent.name}</h3>
+              <span className={predictions[selectedStudent.id]?.prediction === "HIGH RISK" ? "v-badge-risk" : "v-badge-safe"}>
+                {predictions[selectedStudent.id]?.prediction || "..."}
+                {predictions[selectedStudent.id] && ` · ${predictions[selectedStudent.id].risk_probability}%`}
+              </span>
+            </div>
+            <p className="v-dash-muted text-sm mb-5">{selectedStudent.reg_no} · {selectedStudent.department}</p>
+
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <div className="v-dash-card" style={{padding:"14px"}}>
+                <p className="text-xs v-dash-muted mb-1">CGPA</p>
+                <p className="text-2xl font-bold" style={{color: selectedStudent.cgpa < 7 ? "var(--red)" : "var(--green)"}}>
+                  {selectedStudent.cgpa}
+                </p>
+                <p className="text-xs v-dash-muted mt-1">
+                  Dept avg: {(departmentStats.find(d => d.department === selectedStudent.department)?.avgCgpa ?? "—")}
+                </p>
+              </div>
+              <div className="v-dash-card" style={{padding:"14px"}}>
+                <p className="text-xs v-dash-muted mb-1">Attendance</p>
+                <p className="text-2xl font-bold" style={{color: selectedStudent.attendance < 75 ? "var(--red)" : "var(--green)"}}>
+                  {selectedStudent.attendance}%
+                </p>
+                <p className="text-xs v-dash-muted mt-1">
+                  Dept avg: {(departmentStats.find(d => d.department === selectedStudent.department)?.avgAttendance ?? "—")}%
+                </p>
+              </div>
+            </div>
+
+            {predictions[selectedStudent.id]?.explanation?.message && (
+              <div className="v-dash-card mb-5" style={{padding:"14px"}}>
+                <p className="text-xs v-dash-muted mb-2">🔍 Why this risk score?</p>
+                <p className="text-sm">{predictions[selectedStudent.id].explanation.message}</p>
+              </div>
+            )}
+
+            <div className="v-dash-card mb-5" style={{padding:"14px"}}>
+              <p className="text-xs v-dash-muted mb-2">🤖 Recommendation</p>
+              <p className="text-sm">{getRecommendation(selectedStudent)}</p>
+            </div>
+
+            {/* TREND HISTORY */}
+            <div className="v-dash-card mb-5" style={{padding:"14px"}}>
+              <p className="text-xs v-dash-muted mb-2">📈 Attendance & CGPA Trend</p>
+              {historyLoading ? (
+                <div className="v-skel" style={{height:"140px", borderRadius:"10px"}} />
+              ) : historyChartData.length > 1 ? (
+                <ResponsiveContainer width="100%" height={160}>
+                  <LineChart data={historyChartData}>
+                    <XAxis dataKey="date" tick={{fontSize:10, fill:"#7a82a0"}} />
+                    <YAxis yAxisId="left" domain={[0,100]} tick={{fontSize:10, fill:"#7a82a0"}} width={28} />
+                    <YAxis yAxisId="right" orientation="right" domain={[0,10]} tick={{fontSize:10, fill:"#7a82a0"}} width={28} />
+                    <Tooltip contentStyle={{background:"#080c18",border:"1px solid rgba(255,255,255,.12)",borderRadius:10,color:"#eef0f8", fontSize:12}} />
+                    <Line yAxisId="left" type="monotone" dataKey="attendance" stroke="#22d3ee" strokeWidth={2} dot={false} name="Attendance %" />
+                    <Line yAxisId="right" type="monotone" dataKey="cgpa" stroke="#8b5cf6" strokeWidth={2} dot={false} name="CGPA" />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-xs v-dash-muted">
+                  No trend yet — history builds automatically each time this student's record is edited.
+                </p>
+              )}
+            </div>
+
+            {/* WHAT-IF SIMULATOR */}
+            <div className="v-dash-card mb-5" style={{padding:"14px"}}>
+              <div className="flex justify-between items-center mb-1">
+                <p className="text-xs v-dash-muted">🎛️ What-if Simulator</p>
+                <button
+                  onClick={() => setWhatIfActive((v) => !v)}
+                  className={whatIfActive ? "v-btn-purple" : "v-btn-secondary"}
+                  style={{padding:"4px 12px", fontSize:"11px"}}
+                >
+                  {whatIfActive ? "Simulating" : "Try it"}
+                </button>
+              </div>
+
+              {whatIfActive && (
+                <div className="mt-3">
+                  <div className="mb-4">
+                    <div className="flex justify-between text-xs v-dash-muted mb-1">
+                      <span>Attendance</span>
+                      <span style={{color:"var(--d-text)", fontWeight:600}}>{whatIfValues.attendance}%</span>
+                    </div>
+                    <input
+                      type="range" min="0" max="100" step="1"
+                      value={whatIfValues.attendance}
+                      onChange={(e) => setWhatIfValues((v) => ({ ...v, attendance: Number(e.target.value) }))}
+                      className="v-slider"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <div className="flex justify-between text-xs v-dash-muted mb-1">
+                      <span>CGPA</span>
+                      <span style={{color:"var(--d-text)", fontWeight:600}}>{whatIfValues.cgpa.toFixed(1)}</span>
+                    </div>
+                    <input
+                      type="range" min="0" max="10" step="0.1"
+                      value={whatIfValues.cgpa}
+                      onChange={(e) => setWhatIfValues((v) => ({ ...v, cgpa: Number(e.target.value) }))}
+                      className="v-slider"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between v-dash-border-t pt-3" style={{borderTop:"1px solid var(--d-border)"}}>
+                    <span className="text-xs v-dash-muted">Simulated risk</span>
+                    {whatIfLoading ? (
+                      <span className="text-xs v-dash-muted">Calculating...</span>
+                    ) : whatIfResult ? (
+                      <span className={whatIfResult.prediction === "HIGH RISK" ? "v-badge-risk" : "v-badge-safe"}>
+                        {whatIfResult.prediction} · {whatIfResult.risk_probability}%
+                      </span>
+                    ) : (
+                      <span className="text-xs v-dash-muted">—</span>
+                    )}
+                  </div>
+                  {whatIfResult?.explanation?.message && (
+                    <p className="text-xs mt-2" style={{color:"var(--cyan)"}}>🔍 {whatIfResult.explanation.message}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => { setSelectedStudent(null); startEdit(selectedStudent) }}
+                className="v-btn-warn"
+              >Edit</button>
+              <button
+                onClick={() => { setSelectedStudent(null); setConfirmDelete(selectedStudent) }}
+                className="v-btn-danger"
+              >Delete</button>
+              <button onClick={() => setSelectedStudent(null)} className="v-btn-secondary">Close</button>
             </div>
           </div>
         </div>

@@ -1,14 +1,22 @@
-import { useState } from "react"
-import { useNavigate, Link } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useNavigate, Link, useSearchParams } from "react-router-dom"
 import axios from "axios"
 
 const API = import.meta.env.VITE_API_URL || "https://ai-student-analytics.onrender.com"
 
 function Login() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [formData, setFormData] = useState({ email: "", password: "" })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [info, setInfo] = useState("")
+
+  useEffect(() => {
+    if (searchParams.get("sessionExpired")) {
+      setInfo("Your session expired. Please log in again.")
+    }
+  }, [searchParams])
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -37,6 +45,7 @@ function Login() {
         <h1 className="v-auth-title v-gradient-text">AI Student Analytics</h1>
         <p className="v-auth-sub">Sign in to your dashboard</p>
 
+        {info && <div className="v-alert-success mb-4">{info}</div>}
         {error && <div className="v-alert-error mb-4">{error}</div>}
 
         <div className="flex flex-col gap-4">
@@ -52,6 +61,10 @@ function Login() {
             {loading ? "Signing in..." : "Login"}
           </button>
         </div>
+
+        <p className="text-center mt-3 text-sm">
+          <Link to="/forgot-password" className="v-link" style={{ marginLeft: 0 }}>Forgot password?</Link>
+        </p>
 
         <p className="v-auth-foot">
           Don't have an account?
