@@ -36,12 +36,12 @@ function ResetPassword() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <textarea
-            name="token" placeholder="Reset token" value={formData.token}
+            name="token" placeholder="Reset token" aria-label="Reset token" value={formData.token}
             onChange={handleChange} className="v-input" rows={3} required
             style={{ resize: "vertical", fontFamily: "monospace", fontSize: "12px" }}
           />
           <input
-            type="password" name="new_password" placeholder="New password" value={formData.new_password}
+            type="password" name="new_password" placeholder="New password" aria-label="New password" value={formData.new_password}
             onChange={handleChange} className="v-input" required
           />
           <button type="submit" disabled={loading} className="v-btn-primary v-btn-block">

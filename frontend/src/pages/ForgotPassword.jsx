@@ -37,7 +37,7 @@ function ForgotPassword() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
-            type="email" placeholder="Email" value={email}
+            type="email" placeholder="Email" aria-label="Email" value={email}
             onChange={(e) => setEmail(e.target.value)} className="v-input" required
           />
           <button type="submit" disabled={loading} className="v-btn-primary v-btn-block">

@@ -57,6 +57,10 @@ function App() {
           }
         />
 
+        {/* Unknown routes (typos, stale bookmarks) previously rendered a
+            blank page since no route matched — send them back to login. */}
+        <Route path="*" element={<Navigate to="/" />} />
+
       </Routes>
 
     </BrowserRouter>

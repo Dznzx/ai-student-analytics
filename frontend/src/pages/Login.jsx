@@ -50,11 +50,11 @@ function Login() {
 
         <div className="flex flex-col gap-4">
           <input
-            type="email" name="email" placeholder="Email" value={formData.email}
+            type="email" name="email" placeholder="Email" aria-label="Email" value={formData.email}
             onChange={handleChange} onKeyDown={handleKeyDown} className="v-input"
           />
           <input
-            type="password" name="password" placeholder="Password" value={formData.password}
+            type="password" name="password" placeholder="Password" aria-label="Password" value={formData.password}
             onChange={handleChange} onKeyDown={handleKeyDown} className="v-input"
           />
           <button onClick={handleLogin} disabled={loading} className="v-btn-primary v-btn-block mt-1">

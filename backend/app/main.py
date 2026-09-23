@@ -6,6 +6,7 @@ from app.routes.auth_routes import router as auth_router
 from app.routes.student_routes import router as student_router
 from app.routes.risk_routes import router as risk_router
 from app.routes.ml_routes import router as ml_router
+from app.routes.alert_routes import router as alert_router
 from app.database.db import engine
 from app.models.user import Base
 
@@ -40,6 +41,7 @@ app.include_router(auth_router)
 app.include_router(student_router)
 app.include_router(risk_router)
 app.include_router(ml_router)
+app.include_router(alert_router)
 
 @app.get("/")
 def root():

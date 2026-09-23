@@ -334,7 +334,7 @@ function Dashboard() {
         {toasts.map((t) => (
           <div key={t.id} className={`v-toast ${t.type === "error" ? "v-toast-error" : "v-toast-success"}`}>
             <span>{t.message}</span>
-            <button onClick={() => dismissToast(t.id)} className="v-toast-close">✕</button>
+            <button onClick={() => dismissToast(t.id)} className="v-toast-close" aria-label="Dismiss notification">✕</button>
           </div>
         ))}
       </div>
@@ -348,7 +348,7 @@ function Dashboard() {
           <button onClick={sendRiskAlerts} disabled={alertsSending} className="v-btn-purple">
             {alertsSending ? "Sending..." : "📧 Send Risk Alerts"}
           </button>
-          <button onClick={exportCSV} className="v-btn-success">Export CSV</button>
+          <button onClick={() => exportCSV()} className="v-btn-success">Export CSV</button>
           <button onClick={() => setDarkMode(!darkMode)} className="v-btn-secondary">{darkMode ? "Light Mode" : "Dark Mode"}</button>
           <button onClick={logout} className="v-btn-danger">Logout</button>
         </div>
@@ -372,6 +372,7 @@ function Dashboard() {
               type={["attendance","cgpa"].includes(field) ? "number" : "text"}
               name={field}
               placeholder={field.replace("_"," ").replace(/\b\w/g,c=>c.toUpperCase())}
+              aria-label={field.replace("_"," ").replace(/\b\w/g,c=>c.toUpperCase())}
               value={formData[field]}
               onChange={handleChange}
               className="v-dash-input"
@@ -393,7 +394,7 @@ function Dashboard() {
         <h2 className="text-xl font-bold mb-4 v-title">Upload Student CSV</h2>
         <p className="text-sm v-dash-muted mb-4">CSV columns: name, reg_no, department, attendance, cgpa</p>
         <div className="flex gap-4 items-center flex-wrap">
-          <input type="file" accept=".csv" onChange={(e) => setCsvFile(e.target.files[0])} className="text-sm v-dash-muted" />
+          <input type="file" accept=".csv" aria-label="Upload student CSV file" onChange={(e) => setCsvFile(e.target.files[0])} className="text-sm v-dash-muted" />
           <button onClick={uploadCSV} className="v-btn-purple">Upload CSV</button>
         </div>
       </div>
@@ -569,6 +570,7 @@ function Dashboard() {
               <input
                 type="text"
                 placeholder="Search by name or department..."
+                aria-label="Search students by name or department"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="v-dash-input flex-1"
@@ -576,6 +578,7 @@ function Dashboard() {
               <select
                 value={departmentFilter}
                 onChange={(e) => setDepartmentFilter(e.target.value)}
+                aria-label="Filter by department"
                 className="v-dash-input md:w-52"
               >
                 {departments.map((d) => (

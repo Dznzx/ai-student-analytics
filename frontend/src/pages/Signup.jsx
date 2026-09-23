@@ -36,11 +36,11 @@ function Signup() {
         <p className="v-auth-sub">Create your account</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <input type="text" name="username" placeholder="Username" value={formData.username}
+          <input type="text" name="username" placeholder="Username" aria-label="Username" value={formData.username}
             onChange={handleChange} className="v-input" required />
-          <input type="email" name="email" placeholder="Email" value={formData.email}
+          <input type="email" name="email" placeholder="Email" aria-label="Email" value={formData.email}
             onChange={handleChange} className="v-input" required />
-          <input type="password" name="password" placeholder="Password" value={formData.password}
+          <input type="password" name="password" placeholder="Password" aria-label="Password" value={formData.password}
             onChange={handleChange} className="v-input" required />
           <button type="submit" disabled={loading} className="v-btn-primary v-btn-block mt-1">
             {loading ? "Creating account..." : "Sign Up"}
