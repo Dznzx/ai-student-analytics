@@ -1,5 +1,10 @@
 # AI-Powered Student Analytics and Risk Prediction System
 
+**Live app:** https://ai-student-analytics.vercel.app
+**API docs:** https://ai-student-analytics.onrender.com/docs
+
+> The backend is on Render's free tier and spins down when idle — the first request after a period of inactivity can take 30–60s to wake up.
+
 ## Overview
 
 AI-Powered Student Analytics and Risk Prediction System is a full-stack educational analytics platform that uses machine learning techniques to analyze student academic performance, predict risk levels, and provide intelligent insights for educational institutions.
@@ -149,12 +154,6 @@ npm run dev
 ```
 
 ---
-
-# API Documentation
-
-FastAPI Swagger Documentation:
-
-https://ai-student-analytics.onrender.com/docs
 
 ---
 
